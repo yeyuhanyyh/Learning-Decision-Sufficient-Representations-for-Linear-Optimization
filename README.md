@@ -13,10 +13,10 @@ This repository contains two shortest-path experiments.
 ### Experiment 1: Low-affine-dimension setting
 **File:** `codes/Version_1_C_with_low_aff_dimension.m`
 
-This is a warm-up experiment. Only a small subset of edge-cost coordinates is allowed to vary, while all remaining coordinates are fixed. Hence the prior cost set itself is already low-dimensional:
+This is a warm-up experiment. Only a small subset of edge-cost coordinates is allowed to vary, while all remaining coordinates are fixed. Hence, the prior cost set itself is already low-dimensional:
 
 ```math
-\operatorname{affdim}(\mathcal{C}) = d^\star.
+affdim(\mathcal{C}) = d^\star.
 ```
 
 ### Experiment 2: Full-dimensional structured setting
@@ -25,7 +25,7 @@ This is a warm-up experiment. Only a small subset of edge-cost coordinates is al
 This is the main compression experiment. Every edge cost is allowed to vary inside an interval, so the prior cost set is full-dimensional:
 
 ```math
-\operatorname{affdim}(\mathcal{C}) = d.
+affdim(\mathcal{C}) = d.
 ```
 
 However, the corridor construction forces every optimal path to lie in a narrow family of paths, so the decision-relevant dimension is still only $d^\star \ll d$.
@@ -45,7 +45,7 @@ Both experiments use a monotone shortest-path problem on a grid.
 
 ### Experiment 1: low-affine-dimension cost set
 
-This experiment uses a $5 \times 5$ grid and context dimension $p=5$.
+This experiment uses a $4 \times 4$ grid and context dimension $p=5$.
 
 The code selects a small set $I$ of varying edges, and all remaining edge costs are fixed at the same baseline value $c_0$. The data are generated as
 
@@ -243,3 +243,4 @@ The image paths below assume that the generated PNG files under `codes/results/`
 ## Author
 
 Yuhan Ye
+
