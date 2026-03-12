@@ -219,8 +219,8 @@ The image paths below assume that the generated PNG files under `codes/results/`
 ### Experiment 1: Low-affine-dimension setting
 
 <p align="center">
-  <img src="codes/results/low_affdim_spo_risk.png" alt="Low-affine-dimension SPO risk" width="47%">
-  <img src="codes/results/low_affdim_dimW.png" alt="Low-affine-dimension learned dimension" width="47%">
+  <img src="codes/results/low_affdim_spo_risk.png" alt="Low-affine-dimension SPO risk" width="87%">
+  <img src="codes/results/low_affdim_dimW.png" alt="Low-affine-dimension learned dimension" width="87%">
 </p>
 
 <p align="center">
@@ -230,8 +230,8 @@ The image paths below assume that the generated PNG files under `codes/results/`
 ### Experiment 2: Full-dimensional structured setting
 
 <p align="center">
-  <img src="codes/results/full_dim_corridor_spo_risk.png" alt="Full-dimensional structured SPO risk" width="47%">
-  <img src="codes/results/full_dim_corridor_dimW.png" alt="Full-dimensional structured learned dimension" width="47%">
+  <img src="codes/results/full_dim_corridor_spo_risk.png" alt="Full-dimensional structured SPO risk" width="87%">
+  <img src="codes/results/full_dim_corridor_dimW.png" alt="Full-dimensional structured learned dimension" width="87%">
 </p>
 
 <p align="center">
@@ -243,5 +243,6 @@ The image paths below assume that the generated PNG files under `codes/results/`
 ## Author
 
 Yuhan Ye
+
 
 
