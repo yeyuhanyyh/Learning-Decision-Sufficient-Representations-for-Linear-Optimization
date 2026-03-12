@@ -163,10 +163,11 @@ Each file is self-contained and automatically saves figures together with a summ
 
 ---
 
-## Numerical Experiment
+## Experiment Protocol and Output Files
 
-### Experiment 1
-The first script runs an online labeled-data experiment with
+### Experiment 1: Low-affine-dimension setting
+
+The first script uses
 
 ```math
 N_{\mathrm{train}} = 300,
@@ -178,17 +179,18 @@ N_{\mathrm{test}} = 2000,
 
 It reports:
 
-1. test SPO risk versus number of labeled samples;
-2. learned dimension $\dim(W)$ versus number of labeled samples.
+1. test SPO risk versus the number of labeled samples;
+2. learned dimension $\dim(W)$ versus the number of labeled samples.
 
-### Experiment 2
-The second script runs a batch experiment with training sizes
+### Experiment 2: Full-dimensional structured setting
+
+The second script uses training sizes
 
 ```math
 20,\ 40,\ 80,\ 160,\ 320,
 ```
 
-using
+together with
 
 ```math
 N_{\mathrm{test}} = 2000,
@@ -198,10 +200,10 @@ N_{\mathrm{test}} = 2000,
 
 It reports:
 
-1. test SPO risk versus number of labeled samples;
-2. learned dimension $\dim(W)$ versus number of labeled samples.
+1. test SPO risk versus the number of labeled samples;
+2. learned dimension $\dim(W)$ versus the number of labeled samples.
 
-The generated result files are:
+The generated output files are:
 
 - `codes/results/low_affdim_spo_risk.png`
 - `codes/results/low_affdim_dimW.png`
@@ -210,9 +212,7 @@ The generated result files are:
 - `codes/results/full_dim_corridor_dimW.png`
 - `codes/results/full_dim_corridor_summary.mat`
 
----
-
-## Sample Result
+## Sample Results
 
 The image paths below assume that the generated PNG files under `codes/results/` are committed to the repository.
 
@@ -243,6 +243,7 @@ The image paths below assume that the generated PNG files under `codes/results/`
 ## Author
 
 Yuhan Ye
+
 
 
 
