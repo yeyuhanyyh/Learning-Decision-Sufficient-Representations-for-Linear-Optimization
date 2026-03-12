@@ -212,6 +212,8 @@ The generated output files are:
 - `codes/results/full_dim_corridor_dimW.png`
 - `codes/results/full_dim_corridor_summary.mat`
 
+---
+
 ## Sample Results
 
 The image paths below assume that the generated PNG files under `codes/results/` are committed to the repository.
@@ -243,6 +245,7 @@ The image paths below assume that the generated PNG files under `codes/results/`
 ## Author
 
 Yuhan Ye
+
 
 
 
