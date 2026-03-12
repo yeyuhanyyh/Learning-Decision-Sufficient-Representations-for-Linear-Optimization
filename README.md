@@ -107,7 +107,7 @@ g(\xi)
 \tanh\!\left(\frac{A\xi}{\sqrt{p}}\right).
 ```
 
-Therefore, although $\operatorname{affdim}(\mathcal{C}) = d$, the part of the cost vector that matters for optimal decisions is only $d^\star$-dimensional.
+Therefore, although $affdim(\mathcal{C}) = d$, the part of the cost vector that matters for optimal decisions is only $d^\star$-dimensional.
 
 ### Compared training models
 
@@ -243,4 +243,5 @@ The image paths below assume that the generated PNG files under `codes/results/`
 ## Author
 
 Yuhan Ye
+
 
