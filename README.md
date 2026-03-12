@@ -1,253 +1,135 @@
 # Learning Decision-Sufficient Representations for Linear Optimization
 
-This repository contains compact MATLAB experiments accompanying the paper **Learning Decision-Sufficient Representations for Linear Optimization** by **Yuhan Ye, Saurabh Amin, and Asuman Ozdaglar**.
+This repository provides compact MATLAB implementations of two shortest-path experiments illustrating model compression for contextual linear optimization (CLO).
 
-The code is designed for readers who want a concrete, self-contained shortest-path illustration of the paper's central message: **if optimal decisions depend only on a low-dimensional decision-relevant subspace, then contextual predictors can be compressed to that subspace and can generalize more efficiently than full-dimensional predictors**.
+The experiments compare:
 
-## Relation to the Paper
+1. full-dimensional SPO+ training in the ambient cost space;
+2. reduced SPO+ training after learning a decision-relevant subspace.
 
-This repository is most closely connected to the following parts of the paper:
+The central message is that when optimal decisions depend only on a low-dimensional decision-relevant subspace, predictor training can scale with `d_*` rather than the ambient dimension `d`.
 
-- **Sections 3-6**: decision-sufficient datasets, the decision-relevant subspace `W*`, pointwise sufficiency, and cumulative learning over samples.
-- **Section 7**: model compression for contextual linear optimization (CLO).
-- **Section 7.4**: the synthetic shortest-path numerical illustration.
+## Project Overview
 
-At the same time, this repository should be read as a **reader-facing reference implementation**, not as a full reproduction package for every theorem, appendix, or experiment in the manuscript.
+This repository contains two experiments:
 
-In particular:
+| Experiment | File | Purpose |
+| --- | --- | --- |
+| Low-affine-dimension box experiment | `codes/Version_1_C_with_low_aff_dimension.m` | Warm-up setting where only a small subset of cost coordinates can vary. |
+| Full-dimensional corridor experiment | `codes/Version_2_structured_full_dimension_C.m` | Main compression setting where the prior cost set is still full-dimensional, but only a narrow family of paths can ever be optimal. |
 
-- The repository **does implement** synthetic shortest-path experiments that compare full-dimensional SPO+ training against reduced SPO+ training after learning a low-dimensional decision-relevant subspace.
-- The repository **does not implement** every algorithmic and theoretical component from the paper in full generality.
-- The repository **does not aim to reproduce every quantitative number** in the manuscript line-by-line.
-- The included paper **Active Learning For Contextual Linear Optimization: A Margin-Based Approach** is relevant background for CLO, SPO+, and shortest-path examples, but its margin-based active learning algorithm is **not** reimplemented here.
+Both experiments follow the same two-stage idea:
 
-## Paper in Brief
+- **Stage I:** learn a low-dimensional subspace `W_hat` from observed costs;
+- **Stage II:** train a contextual SPO+ predictor inside `W_hat` instead of in the full ambient space.
 
-The paper studies linear optimization problems of the form
+## Key CLO Formulas
 
-```text
-min_x c^T x   subject to x in X,
-```
+Let `x*(v) ∈ argmin_{x ∈ X} v^T x` be a fixed deterministic oracle.
 
-where the feasible set `X` is known but the cost vector `c` is unknown and only known to lie in a prior set `C`.
+- Ellipsoidal prior:
+  `C = { c ∈ R^d : (c - c0)^T Σ^{-1} (c - c0) ≤ 1 }`
 
-Instead of observing the full cost vector, one can query linear measurements `q^T c`. The guiding question is:
+- Canonical lifting:
+  `L_U = Σ U (U^T Σ U)^(-1)`
 
-> Which measurements, and how many of them, are sufficient to recover an optimal decision?
+  `lift_U(s) = c0 + L_U s`
 
-A central object in the paper is the **decision-relevant subspace** `W*`, whose dimension `d*` measures the intrinsic number of directions that can actually change the optimizer. For open convex priors, global sufficiency is characterized by whether the queried directions span this subspace.
+- SPO loss:
+  `ℓ_SPO(c_hat, c) = c^T x*(c_hat) - c^T x*(c)`
 
-The paper then makes three main conceptual moves:
+- SPO risk:
+  `R_SPO(f) = E[ ℓ_SPO(f(ξ), c) ]`
 
-1. It shows that computing globally minimal sufficient datasets is hard in the worst case.
-2. It introduces **pointwise sufficiency** as a tractable per-instance relaxation and develops cutting-plane style learning procedures.
-3. It applies the learned representation to **contextual linear optimization**, where predictor training can be carried out in a compressed subspace of dimension `d*` instead of the ambient cost dimension `d`.
+- SPO+ surrogate:
+  `ℓ_SPO+(c_hat, c) = max_{x ∈ X} (c - 2 c_hat)^T x + 2 c_hat^T x*(c) - c^T x*(c)`
 
-The theoretical payoff is that the relevant complexity term in contextual optimization can scale with `d*` rather than `d`.
+- A valid SPO+ subgradient:
+  `2 ( x*(c) - x*(2 c_hat - c) )`
 
-## What This Code Is Meant to Illustrate
+- Compressed predictor:
+  `c_hat_theta(ξ) = lift_{U*}(g_theta(ξ)) = c0 + L_{U*} g_theta(ξ)`
 
-The MATLAB code focuses on one qualitative message from the paper:
+- Linear coordinate model:
+  `g_theta(ξ) = B_theta ξ`, with `B_theta ∈ R^(d_* × p)`
 
-1. **Stage I:** learn a low-dimensional subspace `W_hat` that captures the decision-relevant directions.
-2. **Stage II:** train a reduced contextual predictor inside `W_hat` instead of directly in the full ambient space.
-3. Compare the reduced model against a standard full-dimensional SPO+ baseline.
+  This reduces the number of trainable parameters from `d p` to `d_* p`.
 
-Both experiments in this repository are finite shortest-path toy models. They deliberately use a compact implementation so that the code is easy to read and modify.
+- Centered Stage-I conditional-mean model:
+  `c - c0 = A_mu ξ + ε`, `E[ε | ξ] = 0`, `μ(ξ) = c0 + A_mu ξ`
 
-Because of that design choice, the code is **simpler than the full formal setup in Section 7**. For example, the paper's CLO discussion uses an ellipsoidal prior and a canonical lifting map, whereas the code here uses simpler shortest-path constructions with box-style restrictions and direct finite-path computations. The goal is not to mirror every formal object exactly, but to preserve the same **model-compression story** in a transparent numerical setting.
+- Lifted Stage-I predictor:
+  `mu_tilde(ξ) = lift_{U_hat}(U_hat^T(mu_hat(ξ) - c0))`
+  
+  equivalently,
+  
+  `mu_tilde(ξ) = c0 + L_{U_hat} U_hat^T (mu_hat(ξ) - c0)`
 
-## Experiments Included in This Repository
+- Stage-II generalization bound in the compressed class:
+  `R_SPO(f) ≤ R_hat_SPO(f) + 2 ω_X(C) sqrt( 2(d_* p + 1) log(n |X^∠|^2) / n ) + ω_X(C) sqrt( log(1/δ) / (2n) )`
 
-### 1. Low-Affine-Dimension Box Experiment
+So the dominant dimension term depends on `d_*`, not `d`.
 
-Public entry point:
-
-- `run_low_affdim_box_experiment.m`
-
-Implementation file:
-
-- `initial_C_low_aff_dimension.m`
-
-What it does:
-
-- Builds a monotone shortest-path problem.
-- Restricts the cost set so that only a small subset of edge coordinates can vary.
-- Learns decision-relevant directions online from labeled cost samples.
-- Compares a full-dimensional SPO+ predictor against a reduced predictor that only operates inside the learned subspace.
-
-Why it is useful:
-
-- This is the cleanest warm-up experiment in the repository.
-- It makes the compression effect easy to see because the intrinsic structure is intentionally simple.
-- It is **not** the strongest setting from the paper, because here the prior itself already has low affine complexity.
-
-### 2. Full-Dimensional Corridor Experiment
-
-Public entry point:
-
-- `run_full_dim_corridor_experiment.m`
-
-Implementation file:
-
-- `structured_full_dimension_C_with_v1_plot.m`
-
-What it does:
-
-- Builds a shortest-path problem in which the prior cost set is still full-dimensional.
-- Uses a corridor construction so that only a small family of paths can become optimal.
-- Learns a decision-relevant subspace from observed costs.
-- Compares full-dimensional SPO+ against reduced SPO+ in the learned subspace.
-
-Why it is closer to the paper:
-
-- The paper's main representation-learning story is interesting precisely when the ambient cost space is high-dimensional but the optimizer only depends on a much smaller intrinsic structure.
-- This corridor experiment is a compact version of that phenomenon.
-- Among the scripts in this repository, this is the one that is conceptually closest to the Section 7.4 shortest-path illustration.
-
-## Repository Layout
+## Repository Structure
 
 ```text
-run_low_affdim_box_experiment.m         Public entry point for the low-affine-dimension experiment
-run_full_dim_corridor_experiment.m      Public entry point for the full-dimensional corridor experiment
-run_all_experiments.m                   Runs both experiments
-
-initial_C_low_aff_dimension.m           Implementation of the low-affine-dimension experiment
-structured_full_dimension_C_with_v1_plot.m
-                                        Implementation of the full-dimensional corridor experiment
-
-README.md                               This document
-results/                                Created automatically when experiments are run
+.
+├── codes
+│   ├── Version_1_C_with_low_aff_dimension.m
+│   ├── Version_2_structured_full_dimension_C.m
+│   └── results/   % created automatically after running the scripts
+├── Learning_Decision_Sufficient_Representations_for_Linear_Optimization_arxiv.pdf
+└── README.md
 ```
-
-Legacy filenames are kept for backward compatibility, but new readers should start from the `run_*` entry points.
 
 ## Requirements
 
 - MATLAB R2021a or later
 - Optimization Toolbox (`linprog`)
 
-No external datasets are required.
+No external dataset is required.
 
-## Quick Start
+## How to Run
 
-Run either experiment individually from MATLAB:
+Open MATLAB in the `codes/` folder, then open and run either of the following files from the editor:
 
-```matlab
-run_low_affdim_box_experiment
-run_full_dim_corridor_experiment
-```
+- `Version_1_C_with_low_aff_dimension.m`
+- `Version_2_structured_full_dimension_C.m`
 
-Or run both:
+Each script is self-contained and will automatically create a `results/` folder inside `codes/`.
 
-```matlab
-run_all_experiments
-```
+## Output Files
 
-## What Gets Saved
+After running the experiments, the following files are generated under `codes/results/`:
 
-Each experiment automatically creates a `results/` directory and saves:
+| Experiment | Figure 1 | Figure 2 | Summary |
+| --- | --- | --- | --- |
+| Low-affine-dimension box | `low_affdim_spo_risk.png` | `low_affdim_dimW.png` | `low_affdim_summary.mat` |
+| Full-dimensional corridor | `full_dim_corridor_spo_risk.png` | `full_dim_corridor_dimW.png` | `full_dim_corridor_summary.mat` |
 
-- exported figures as `.png`
-- a summary `.mat` file containing the experiment configuration and aggregated metrics
+## Sample Result
 
-Typical outputs are:
+Each experiment produces two main outputs:
 
-- `results/low_affdim_spo_risk.png`
-- `results/low_affdim_dimW.png`
-- `results/low_affdim_summary.mat`
-- `results/full_dim_corridor_spo_risk.png`
-- `results/full_dim_corridor_dimW.png`
-- `results/full_dim_corridor_summary.mat`
+1. **Test SPO risk**
+   - compares full-dimensional SPO+ against reduced SPO+;
+   - reported on a log scale.
 
-## How to Read the Outputs
+2. **Learned dimension of the subspace**
+   - tracks the discovered `dim(W)` as the labeled sample size increases.
 
-Each experiment produces two main plots.
+Typical qualitative behavior:
 
-### Learned Dimension Plot
+- the learned dimension stabilizes quickly;
+- the reduced model becomes competitive with fewer labeled samples;
+- the full-dimensional corridor experiment is the clearest model-compression example, because `affdim(C) = d` while the decision-relevant dimension remains much smaller.
 
-This plot tracks the dimension of the learned subspace `W_hat` as more labeled samples are observed.
+## Notes
 
-Interpretation:
+- `Version_1` is the simpler warm-up experiment.
+- `Version_2` is the main full-dimensional compression experiment.
+- The code is intended as a compact numerical illustration of decision-sufficient representation learning and contextual linear optimization, not as a full reproduction package for every theorem in the paper.
 
-- If the learned dimension quickly stabilizes, Stage I is discovering the relevant directions efficiently.
-- If it stabilizes near the expected intrinsic dimension, the representation learner is behaving as intended.
+## Author
 
-### SPO Risk Plot
-
-This plot compares test SPO risk for:
-
-- a full-dimensional predictor
-- a reduced predictor trained after learning `W_hat`
-
-Interpretation:
-
-- If the reduced model reaches lower risk earlier, the learned representation is helping statistically.
-- This is the qualitative phenomenon predicted by the paper's model-compression perspective: learning in the right low-dimensional subspace can be better than learning in the full ambient space.
-
-## Mapping from Paper to Code
-
-The repository is easiest to understand through the following paper-to-code map.
-
-### From the paper
-
-- The paper defines the decision-relevant subspace `W*` and intrinsic dimension `d*`.
-- It shows that worst-case global sufficiency is computationally hard.
-- It introduces pointwise sufficiency and cumulative learning procedures.
-- It applies the resulting representation to contextual linear optimization and shows that the effective dimension in the generalization bound can improve from `d` to `d*`.
-
-### In the code
-
-- `W_hat` plays the role of a learned approximation to the decision-relevant subspace.
-- The online/cumulative updates are simplified shortest-path versions of the representation-learning idea.
-- The reduced predictor corresponds to Stage II compression: train only in the learned subspace instead of the full cost dimension.
-- The SPO risk comparison is the practical visualization of the paper's Section 7 message.
-
-## Important Scope Notes
-
-To avoid overstating what this repository does, here are the main limitations.
-
-- This is a **synthetic shortest-path repository**, not a full benchmark suite.
-- The code is meant to be **readable and minimal**, so several objects from the theory are implemented in simplified form.
-- The repository gives a **qualitative numerical illustration** of the paper's compression idea; it is not a theorem-verification package.
-- The full ellipsoidal-prior formulation and all appendix-level technical details are not implemented verbatim.
-- Existing PNG files in the repository root are older snapshots; new runs save outputs under `results/`.
-
-## Main User Controls
-
-If you want to modify the experiments, the most useful parameters are near the top of the implementation files.
-
-For `initial_C_low_aff_dimension.m`:
-
-- `cfg.r_true`: target intrinsic dimension in the warm-up experiment
-- `cfg.Ntrain`, `cfg.Ntest`, `cfg.nTrials`: dataset sizes and repetition count
-- `cfg.seed`: global reproducibility seed
-
-For `structured_full_dimension_C_with_v1_plot.m`:
-
-- `cfg.dstar_target`: target intrinsic dimension for the corridor construction
-- `cfg.trainSizes`: training sample sizes used in the performance curve
-- `cfg.nTrial`: number of random trials
-- `cfg.seed`: global reproducibility seed
-
-## Related Reading in This Folder
-
-- Learning_Decision_Sufficient_Representations_for_Linear_Optimization_arxiv.pdf: the main paper motivating this repository.
-- Active Learning For Contextual Linear Optimization A Margin-Base Approach.pdf: relevant background on CLO, SPO+, shortest-path examples, and label-efficient learning.
-
-## Citation
-If you use or build on this repository, please cite the paper:
-
-```bibtex
-@misc{ye2026decisionsufficient,
-  title={Learning Decision-Sufficient Representations for Linear Optimization},
-  author={Yuhan Ye and Saurabh Amin and Asuman Ozdaglar},
-  year={2026},
-  note={Preprint}
-}
-```
-
-If the paper later appears with an official arXiv identifier, conference version, or journal version, please update the citation accordingly.
-
-
-
+Yuhan Ye
