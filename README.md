@@ -32,7 +32,7 @@ However, the corridor construction forces every optimal path to lie in a narrow 
 
 ---
 
-## Toy Model Setting
+## Model Setting
 
 ### Common shortest-path model
 
@@ -243,6 +243,7 @@ The image paths below assume that the generated PNG files under `codes/results/`
 ## Author
 
 Yuhan Ye
+
 
 
 
