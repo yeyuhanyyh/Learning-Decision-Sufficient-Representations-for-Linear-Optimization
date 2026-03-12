@@ -2,107 +2,130 @@
 
 This repository contains MATLAB code for the numerical shortest-path experiments in the paper **Learning Decision-Sufficient Representations for Linear Optimization**.
 
-The code illustrates the following idea: if optimal decisions depend only on a low-dimensional decision-relevant subspace, then a contextual predictor can be trained in that learned reduced space instead of in the full ambient cost space.
+The code illustrates the following idea: if optimal decisions depend only on a low-dimensional decision-relevant subspace, then a contextual predictor can be trained in that learned reduced space instead of in the full ambient cost space. Therefore, we can obtain a smaller training model and a sharper generalization bound, with the relevant dimension improving from $d$ to $d^\star$.
 
 ---
 
 ## Project Overview
 
-This repository includes two synthetic shortest-path experiments.
+This repository contains two shortest-path experiments.
 
-| Experiment | File | Description |
-| --- | --- | --- |
-| Low-affine-dimension setting | `codes/Version_1_C_with_low_aff_dimension.m` | A warm-up experiment where only a low-affine-complexity part of the cost vector varies. |
-| Full-dimensional structured setting | `codes/Version_2_structured_full_dimension_C.m` | The main compression experiment, where the ambient cost space is full-dimensional but the decision-relevant structure is low-dimensional. |
+### Experiment 1: Low-affine-dimension setting
+**File:** `codes/Version_1_C_with_low_aff_dimension.m`
 
-In both experiments, the workflow is the same:
+This is a warm-up experiment. Only a small subset of edge-cost coordinates is allowed to vary, while all remaining coordinates are fixed. Hence the prior cost set itself is already low-dimensional:
 
-1. learn a low-dimensional subspace `W_hat` from observed costs;
-2. train a reduced SPO+ predictor inside `W_hat`;
-3. compare it against a standard full-dimensional SPO+ baseline.
+```math
+\operatorname{affdim}(\mathcal{C}) = d^\star.
+```
+
+### Experiment 2: Full-dimensional structured setting
+**File:** `codes/Version_2_structured_full_dimension_C.m`
+
+This is the main compression experiment. Every edge cost is allowed to vary inside an interval, so the prior cost set is full-dimensional:
+
+```math
+\operatorname{affdim}(\mathcal{C}) = d.
+```
+
+However, the corridor construction forces every optimal path to lie in a narrow family of paths, so the decision-relevant dimension is still only $d^\star \ll d$.
 
 ---
 
-## Method
+## Toy Model Setting
 
-### Contextual Linear Optimization
+### Common shortest-path model
 
-For a cost vector `c`, the decision rule is
+Both experiments use a monotone shortest-path problem on a grid.
 
-```text
-x*(c) ∈ argmin_{x ∈ X} c^T x
+- Each feasible decision is an $s$-$t$ monotone path.
+- Each path is represented by its edge-incidence vector.
+- The cost vector $c \in \mathbb{R}^d$ assigns one cost to each edge.
+- A context vector $\xi \in \mathbb{R}^p$ is observed, and the goal is to predict a cost vector that induces a good path decision.
+
+### Experiment 1: low-affine-dimension cost set
+
+This experiment uses a $5 \times 5$ grid and context dimension $p=5$.
+
+The code selects a small set $I$ of varying edges, and all remaining edge costs are fixed at the same baseline value $c_0$. The data are generated as
+
+```math
+c_e = c_0
+\qquad \text{for } e \notin I,
 ```
 
-where `X` is the feasible set of shortest-path decisions.
+and
 
-### Prior Set and Canonical Lifting
-
-The contextual LO formulation in the paper uses the ellipsoidal prior
-
-```text
-C = { c ∈ R^d : (c - c0)^T Sigma^{-1} (c - c0) ≤ 1 }
+```math
+c_e
+=
+c_0
++
+\Delta \tanh\!\left(\frac{a_e^\top \xi}{\sqrt{p}}\right)
++
+\eta_e
+\qquad \text{for } e \in I,
 ```
 
-For a basis `U` of a decision-relevant subspace, define the canonical lifting map
+where $\Delta$ is the signal amplitude and $\eta_e$ is a small noise term.
 
-```text
-L_U = Sigma U (U^T Sigma U)^{-1}
-lift_U(s) = c0 + L_U s
+So in this experiment, only $d^\star = |I|$ coordinates truly vary, and the prior cost set itself has affine dimension $d^\star$.
+
+### Experiment 2: full-dimensional corridor construction
+
+This experiment uses a $4 \times 4$ grid and context dimension $p=5$.
+
+The code first constructs a narrow **corridor** inside the grid. It starts from a base monotone path and enlarges it by adding boundaries of selected unit squares until the corridor-path family achieves the target decision-relevant dimension $d^\star$.
+
+The cost box is then designed so that corridor edges are cheap and outside edges are expensive:
+
+```math
+c_e \in [9,11]
+\qquad \text{for corridor edges},
 ```
 
-This map converts a low-dimensional coordinate back to a feasible cost vector in the original ambient cost space.
-
-### Stage I: Learn a Decision-Sufficient Representation
-
-From contextual samples `(xi, c)`, estimate the conditional mean `mu(xi) = E[c | xi]`.  
-A centered linear model is
-
-```text
-c - c0 = A_mu xi + eps,    E[eps | xi] = 0
-mu(xi) = c0 + A_mu xi
+```math
+c_e \in [99,101]
+\qquad \text{for outside edges}.
 ```
 
-After learning a subspace `W_hat` with orthonormal basis `U_hat`, the lifted compressed predictor is
+Because every coordinate still varies inside an interval, the prior cost set is full-dimensional. At the same time, a domination check ensures that for every $c \in \mathcal{C}$, the optimal path must stay inside the corridor.
 
-```text
-mu_tilde(xi) = lift_{U_hat}(U_hat^T (mu_hat(xi) - c0))
-             = c0 + L_{U_hat} U_hat^T (mu_hat(xi) - c0)
+The contextual signal is injected only along the true decision-relevant subspace:
+
+```math
+c
+=
+c_{\mathrm{base}}
++
+U^\star g(\xi)
++
+\varepsilon,
+\qquad
+g(\xi)
+=
+\tanh\!\left(\frac{A\xi}{\sqrt{p}}\right).
 ```
 
-### Stage II: Train SPO+ in the Learned Subspace
+Therefore, although $\operatorname{affdim}(\mathcal{C}) = d$, the part of the cost vector that matters for optimal decisions is only $d^\star$-dimensional.
 
-Given a predicted cost `c_hat`, the SPO loss is
+### Compared training models
 
-```text
-ell_SPO(c_hat, c) = c^T x*(c_hat) - c^T x*(c)
+Both scripts compare two predictors.
+
+The full model is trained directly in the ambient space, so its linear parameter size is
+
+```math
+d(p+1).
 ```
 
-Its convex surrogate is
+The reduced model first learns a subspace $W$, then trains only on reduced coordinates, so its linear parameter size is
 
-```text
-ell_SPO+(c_hat, c) = max_{x ∈ X} (c - 2 c_hat)^T x + 2 c_hat^T x*(c) - c^T x*(c)
+```math
+\dim(W)(p+1) \approx d^\star(p+1).
 ```
 
-A valid SPO+ subgradient is
-
-```text
-2 ( x*(c) - x*(2 c_hat - c) )
-```
-
-The compressed contextual predictor has the form
-
-```text
-c_hat_theta(xi) = lift_{U_star}(g_theta(xi))
-                = c0 + L_{U_star} g_theta(xi)
-```
-
-For a linear coordinate model,
-
-```text
-g_theta(xi) = B_theta xi,    B_theta ∈ R^{d_star × p}
-```
-
-so the number of trainable parameters is reduced from `d p` to `d_star p`.
+This is exactly the sense in which learning a decision-sufficient representation gives a smaller training model and a better dimension-dependent generalization guarantee.
 
 ---
 
@@ -131,35 +154,58 @@ No external dataset is required.
 
 ## How to Run
 
-1. Open MATLAB in the repository folder.
-2. Open one of the following files in the MATLAB editor:
-   - `codes/Version_1_C_with_low_aff_dimension.m`
-   - `codes/Version_2_structured_full_dimension_C.m`
-3. Click **Run**.
+Open MATLAB in the repository folder, open one of the following files in the editor, and click **Run**:
 
-Each script is self-contained and saves figures plus a summary `.mat` file under `codes/results/`.
+- `codes/Version_1_C_with_low_aff_dimension.m`
+- `codes/Version_2_structured_full_dimension_C.m`
+
+Each file is self-contained and automatically saves figures together with a summary `.mat` file under `codes/results/`.
 
 ---
 
 ## Numerical Experiment
 
-Each experiment produces two main figures:
+### Experiment 1
+The first script runs an online labeled-data experiment with
 
-1. **Test SPO risk**
-   - compares full-dimensional SPO+ against reduced SPO+;
-   - plotted against the number of labeled training samples.
+```math
+N_{\mathrm{train}} = 300,
+\qquad
+N_{\mathrm{test}} = 2000,
+\qquad
+10 \text{ trials}.
+```
 
-2. **Learned dimension**
-   - tracks the learned dimension `dim(W_hat)` as the labeled sample size increases.
+It reports:
+
+1. test SPO risk versus number of labeled samples;
+2. learned dimension $\dim(W)$ versus number of labeled samples.
+
+### Experiment 2
+The second script runs a batch experiment with training sizes
+
+```math
+20,\ 40,\ 80,\ 160,\ 320,
+```
+
+using
+
+```math
+N_{\mathrm{test}} = 2000,
+\qquad
+10 \text{ trials}.
+```
+
+It reports:
+
+1. test SPO risk versus number of labeled samples;
+2. learned dimension $\dim(W)$ versus number of labeled samples.
 
 The generated result files are:
 
-### Experiment 1: Low-affine-dimension setting
 - `codes/results/low_affdim_spo_risk.png`
 - `codes/results/low_affdim_dimW.png`
 - `codes/results/low_affdim_summary.mat`
-
-### Experiment 2: Full-dimensional structured setting
 - `codes/results/full_dim_corridor_spo_risk.png`
 - `codes/results/full_dim_corridor_dimW.png`
 - `codes/results/full_dim_corridor_summary.mat`
@@ -168,42 +214,29 @@ The generated result files are:
 
 ## Sample Result
 
-The image paths below assume that the generated figures are kept under `codes/results/` and committed to the repository.
+The image paths below assume that the generated PNG files under `codes/results/` are committed to the repository.
 
 ### Experiment 1: Low-affine-dimension setting
 
 <p align="center">
-  <img src="codes/results/low_affdim_spo_risk.png" alt="Low-affine-dimension SPO risk" width="48%">
-  <img src="codes/results/low_affdim_dimW.png" alt="Low-affine-dimension learned dimension" width="48%">
+  <img src="codes/results/low_affdim_spo_risk.png" alt="Low-affine-dimension SPO risk" width="47%">
+  <img src="codes/results/low_affdim_dimW.png" alt="Low-affine-dimension learned dimension" width="47%">
 </p>
 
 <p align="center">
-  Left: test SPO risk. Right: learned dimension of the decision-sufficient subspace.
+  <em>Left: test SPO risk. Right: learned dimension of the discovered decision-sufficient subspace.</em>
 </p>
 
 ### Experiment 2: Full-dimensional structured setting
 
 <p align="center">
-  <img src="codes/results/full_dim_corridor_spo_risk.png" alt="Full-dimensional structured SPO risk" width="48%">
-  <img src="codes/results/full_dim_corridor_dimW.png" alt="Full-dimensional structured learned dimension" width="48%">
+  <img src="codes/results/full_dim_corridor_spo_risk.png" alt="Full-dimensional structured SPO risk" width="47%">
+  <img src="codes/results/full_dim_corridor_dimW.png" alt="Full-dimensional structured learned dimension" width="47%">
 </p>
 
 <p align="center">
-  Left: test SPO risk. Right: learned dimension of the decision-sufficient subspace.
+  <em>Left: test SPO risk. Right: learned dimension of the discovered decision-sufficient subspace.</em>
 </p>
-
-Typical qualitative behavior:
-- the learned dimension stabilizes quickly;
-- the reduced SPO+ model becomes competitive with fewer labeled samples;
-- the compression effect is clearest in the full-dimensional structured experiment.
-
----
-
-## Notes
-
-- `Version_1_C_with_low_aff_dimension.m` is the simpler warm-up experiment.
-- `Version_2_structured_full_dimension_C.m` is the main compression experiment.
-- This repository is intended as a compact numerical illustration of decision-sufficient representation learning for contextual linear optimization.
 
 ---
 
